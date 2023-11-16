@@ -1,0 +1,5 @@
+dist
+src/*.so
+src/*.o
+src/t_ringbuf
+src/t_stress

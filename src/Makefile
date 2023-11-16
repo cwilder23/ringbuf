@@ -1,13 +1,12 @@
 #
 # This file is in the Public Domain.
 #
-
+CC:=		@gcc
 DESTDIR=	../dist
 LIBDIR:=	$(DESTDIR)/lib
 INCDIR:=	$(DESTDIR)/include
 
-# libtool is now libtoolize. Install on Ubuntu: sudo apt install libtool
-LIBTOOL=	/usr/bin/libtoolize
+# libtool is nowlibtoolize. Install on Ubuntu: sudo apt install libtool
 
 SYSNAME:=	$(shell uname -s)
 SYSARCH:=	$(shell uname -m)
@@ -52,34 +51,32 @@ INCS=		ringbuf.h
 
 OBJS=		ringbuf.o
 
-$(LIB).la:	LDFLAGS+=	-rpath $(LIBDIR)
-install/%.la:	ILIBDIR=	$(DESTDIR)/$(LIBDIR)
+$(LIB).so:	LDFLAGS+=	-Wl,-rpath=$(LIBDIR)
+install/%.so:	ILIBDIR=	$(DESTDIR)/$(LIBDIR)
 install:	IINCDIR=	$(DESTDIR)/$(INCDIR)/
 #install:	IMANDIR=	$(DESTDIR)/$(MANDIR)/man3/
 
-all: init obj lib
+#all: init obj lib stress tests
+all: obj lib tests stress install
 
-PHONY init: 
-	@mkdir -p $(LIBDIR) $(INCDIR)
+#PHONY init:
+#	$(info CC=$(CC))	
+#	@mkdir -p $(LIBDIR) $(INCDIR)
 
 obj: $(OBJS)
 
-lib: $(LIB).la
+lib: $(LIB).so
 
-%.lo: %.c
-	$(LIBTOOL) --mode=compile --tag CC $(CC) $(CFLAGS) -c $<
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<
 
-$(LIB).la: $(shell echo $(OBJS) | sed 's/\.o/\.lo/g')
-	$(LIBTOOL) --mode=link --tag CC $(CC) $(LDFLAGS) -o $@ $(notdir $^)
+$(LIB).so: $(OBJS)
+	$(CC) -shared $(LDFLAGS) $^ -o $@
 
-install/%.la: %.la
-	mkdir -p $(ILIBDIR)
-	$(LIBTOOL) --mode=install install -c $(notdir $@) $(ILIBDIR)/$(notdir $@)
-
-install: $(addprefix install/,$(LIB).la)
-	$(LIBTOOL) --mode=finish $(LIBDIR)
-	mkdir -p $(IINCDIR) && install -c $(INCS) $(IINCDIR)
-	#mkdir -p $(IMANDIR) && install -c $(MANS) $(IMANDIR)
+install: $(LIB).so
+	@mkdir -p $(INCDIR) $(LIBDIR)
+	@cp $(INCS) $(INCDIR)
+	@mv $(LIB).so $(LIBDIR)
 
 tests: $(OBJS) t_ringbuf.o
 	$(CC) $(CFLAGS) $^ -o t_ringbuf -lpthread
@@ -90,7 +87,6 @@ stress: $(OBJS) t_stress.o
 	./t_stress
 
 clean:
-	$(LIBTOOL) --mode=clean rm
-	rm -rf .libs *.o *.lo *.la t_ringbuf t_stress $(DISTDIR)
+	@rm -rf *.o *.so t_ringbuf t_stress $(DESTDIR)
 
 .PHONY: all obj lib install tests stress clean
